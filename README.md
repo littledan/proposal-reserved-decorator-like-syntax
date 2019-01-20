@@ -79,13 +79,15 @@ It might be notable that it's hard to find historical examples of this technique
 
 Let's see if we can reduce the syntax variation of new proposals by introducing a new pattern which can be flexibly used in many of these different potential future language features: to modify an existing construct with a new feature, prepend it with a built-in decorator `@scope: decorator`
 
+### Credits for the idea
+
 Thanks to Ron Buckton for suggesting this particular syntax in [this decorators issue comment](https://github.com/tc39/proposal-decorators/issues/69#issuecomment-385609889).
 
 Thanks to Leo Balter for raising the idea of using a variant of decorator syntax for syntactic tail calls, which was really helpful for getting me thinking on this path.
 
-Thabks to Yehuda Katz for hia insight in bribging decorators to JavaScript and vision to use them as a basis for modifying all soets of syntactic constructs, and for discussions and reviews of this proposal.
+Thanks to Yehuda Katz for hia insight in bringing decorators to JavaScript and vision to use them as a basis for modifying all soets of syntactic constructs, and for discussions and reviews of this proposal.
 
-Thanks to Waldemar Horwat and Kevin Gibbons, Mark Miller, Leo Balter, Dave Herman and moe in TC39 for raising the urgency and peiprity of limiting the growth of syntactic complexity in JavaScript.
+Thanks to Waldemar Horwat, Kevin Gibbons, Mark Miller, Leo Balter, Dave Herman and more in TC39 for raising the urgency and priority of limiting the growth of syntactic complexity in JavaScript.
 
 ### Intuition for built-in decorators
 
@@ -101,22 +103,6 @@ Decorator-like constructs do different things in different languages; it's far f
 ### Benefits of a unified syntax for modification
 
 The goal here is not to encourage an explosion of new modifiers that everyone has to learn. But, when new modifiers do turn out to be needed in the evolution of the language, JavaScript developers should not have to learn a new set of syntactic rules to govern it, which are specific to that particular modifier.
-
-### Custom code transforms
-
-Many people are experimenting with using various kinds of code generation in JavaScript, e.g., with [Babel](https://babeljs.io/) plugins. Babel's parser only permits standards-track syntax (plus JSX and type systems) to be parsed, so transforms end up giving new semantics to existing syntax. Sometimes, the semantics provided can be considered in line with standard JavaScript, and sometimes, they may be somewhat distinct. Because there's no syntactic place to "opt in" to other semantics, new interpretations of existing constructs are the only option.
-
-There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
-
-To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax. 
-
-#### Managing scope names
-
-There is some risk that different non-standard scope names may overlap and conflict, much like different libraries that add properties of the same name to the global object may overlap and conflict. Unlike in libraries, there's no clear way to "import" these constructs to disambiguate (though one could imagine an analogous, tools-only "import type"-style construct for built-in decorators); built-in decorators aren't based on lexical scoping. This would be unfortunate, but at least it would be a limited-impact conflict (to those particular constructs).
-
-Some mitigation strategies to reduce the risks of overlaps:
-- By convention, scopes which are project-specific could use related names, such as `@ember:` or `@ts:`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases.
-- We could build a central place to share information about what kinds of scope names are used by projects; when choosing a new scope name, people can consult this list and choose one not included, and then note their choice on the list. Participation would be optional but beneficial to participants. Thiswork could take place in the [JS shared interfaces repository](https://github.com/littledan/js-shared-interfaces/).
 
 ## Examples of application
 
@@ -135,7 +121,7 @@ For constructs which are a mode for constructs which define functions, classes, 
 
 ### Function.prototype.toString censorship
 
-<table><tr><th>[Current proposal](https://github.com/domenic/proposal-function-prototype-tostring-censorship) form<th>As a built-in decorator
+<table><tr><th><a href="https://github.com/domenic/proposal-function-prototype-tostring-censorship">Current proposal</a> form<th>As a built-in decorator
 <tr><td>
 
 ```js
@@ -171,7 +157,7 @@ Note that the addition of this syntax would not meet the "backwards compatibilit
 
 ### Operator overloading declarations
 
-<table><tr><th>[Current proposal](https://github.com/littledan/proposal-operator-overloading/) form<th>As a built-in decorator
+<table><tr><th><a href="https://github.com/littledan/proposal-operator-overloading/">Current proposal</a> form<th>As a built-in decorator
 <tr><td>
 
 ```js
@@ -193,7 +179,7 @@ ES2015's implicit proper tail calls (PTC, also referred to as "tail call optimiz
 The ["Syntactic Tail Calls"](https://github.com/tc39/proposal-ptc-syntax/) (STC) proposal adds explicit syntax for tail calls. However, this proposal uses the syntax `return continue`, which not everyone is happy about. Built-in decorators could be used for an alternative syntax design.
 
 <table><tr><th>Variant<th>Syntax<th>As a built-in decorator
-<tr><td>[Callsite-based](https://github.com/tc39/proposal-ptc-syntax/)<td>
+  <tr><td><a href="https://github.com/tc39/proposal-ptc-syntax/">Callsite-based</a><td>
 
 ```js
 function factorial(n, acc = 1) {
@@ -216,7 +202,7 @@ function factorial(n, acc = 1) {
   return factorial(n - 1, acc * n)
 }
 ```
-<tr><td>[Function-based](https://github.com/tc39/proposal-ptc-syntax/issues/5)<td>
+<tr><td><a href="https://github.com/tc39/proposal-ptc-syntax/issues/5">Function-based</a><td>
 
 ```js
 function factorial(n, acc = 1) {
@@ -251,7 +237,7 @@ Different kinds of syntaxes have been tossed around for "defensible classes", "t
 Rather than introduce various kinds of contextual keywords, we could use built-in decorators for this sort of case:
 
 <table><tr><th>Proposal<th>Syntax<th>As a built-in decorator
-<tr><td>[Defensible classes](https://github.com/hemanth/es-next#defensible-classes)<td>
+  <tr><td><a href="https://github.com/hemanth/es-next#defensible-classes">Defensible classes</a><td>
 
 ```js
 const class Point { 
@@ -281,7 +267,7 @@ class Point {
   }
 }
 ```
-<tr><td>[Typed objects](https://github.com/tschneidereit/proposal-typed-objects/blob/master/explainer.md)<td>
+<tr><td><a href="https://github.com/tschneidereit/proposal-typed-objects/blob/master/explainer.md">Typed objects<td>
 
 ```js
 const Point = new StructType([
@@ -442,7 +428,7 @@ async function load() {
 <tr><td>Import metadata<td>
 
 ```js
-import Foo from "./foo.mjs" with { option: "value", option2: "value2" };
+import Foo from "./foo.mjs" with option "value", option2 "value2";
 ```
 <td>
 
@@ -452,6 +438,22 @@ import Foo from "./foo.mjs";
 
 ```
 </table>
+
+### Custom code transforms
+
+Many people are experimenting with using various kinds of code generation in JavaScript, e.g., with [Babel](https://babeljs.io/) plugins. Babel's parser only permits standards-track syntax (plus JSX and type systems) to be parsed, so transforms end up giving new semantics to existing syntax. Sometimes, the semantics provided can be considered in line with standard JavaScript, and sometimes, they may be somewhat distinct. Because there's no syntactic place to "opt in" to other semantics, new interpretations of existing constructs are the only option.
+
+There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
+
+To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax. 
+
+#### Managing scope names
+
+There is some risk that different non-standard scope names may overlap and conflict, much like different libraries that add properties of the same name to the global object may overlap and conflict. Unlike in libraries, there's no clear way to "import" these constructs to disambiguate (though one could imagine an analogous, tools-only "import type"-style construct for built-in decorators); built-in decorators aren't based on lexical scoping. This would be unfortunate, but at least it would be a limited-impact conflict (to those particular constructs).
+
+Some mitigation strategies to reduce the risks of overlaps:
+- By convention, scopes which are project-specific could use related names, such as `@ember:` or `@ts:`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases.
+- We could build a central place to share information about what kinds of scope names are used by projects; when choosing a new scope name, people can consult this list and choose one not included, and then note their choice on the list. Participation would be optional but beneficial to participants. This work could take place in the [JS shared interfaces repository](https://github.com/littledan/js-shared-interfaces/).
 
 ## Syntactic details
 
