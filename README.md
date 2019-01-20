@@ -118,56 +118,120 @@ For constructs which are a mode for constructs which define functions, classes, 
 
 (Happy to bikeshed about future other names in an issue.)
 
-### Function.prototype.toString censorship
+#### Auto-bound methods
 
-<table><tr><th><a href="https://github.com/domenic/proposal-function-prototype-tostring-censorship">Current proposal</a> form<th>As a built-in decorator
-<tr><td>
+Many of the use-cases for decorators have to do with various ways to "auto-bind" methods, that is, make it so that `this.method` refers to `this.method.bind(this)`. Class fields permit a pattern for using arrow functions in initializers, but this causes runtime overhead by pre-allocating the bound method per instance, when a bound method may not be needed. The decorator-based patterns can make that allocation lazy, but still, a bound method needs to be created each time a method is used, even if it's called immediately.
+
+As a built-in feature, the runtime may be able to eliminate the creation of the bound method in the cases where it's called immediately, creating and caching it only when needed. It also may be more efficient to run during startup if it's built-in to the IC system rather than calling out to a custom getter (though in optimized code, the distinction may not exist).
+
+<table><tr><th>Usage style<th>As a built-in decorator
+<tr><td>On a specific method<td>
 
 ```js
-"use no Function.prototype.toString";
-function f() { }
-function g() { }
+class C {
+  @use: autobind
+  method() { }
+}
 ```
-<td>
+<tr><td>On all methods in a class<td>
 
 ```js
-@use: noFunctionPrototypeToString;
-function f() { }
-function g() { }
+@use: autobind
+class C {
+  method() { }
+}
 ```
-<tr><td>
+</table>
+
+### Explicit resource management
+
+The [explicit resource management](https://github.com/tc39/proposal-using-statement) proposal creates a protocol and convenient syntax for disposing of resources after they are used in a block of code.
+
+<table><tr><th>Usage mode<th>Syntax<th>As a built-in decorator
+<tr><td>Using an allocated resource in a block<td>
 
 ```js
-function h() {
-  "use no Function.prototype.toString";
+let file = File.open(path);
+using (file) {
+  file.doStuff();
 }
 ```
 <td>
 
 ```js
-@use: noFunctionPrototypeToString
-function h() { }
+let file = File.open(path);
+@use: resource(file) {
+  file.doStuff();
+}
 ```
-</table>
-
-There is a particular question about how "deep" should these built-in decorator syntaxes go--should such a construct be able to apply recursively, into nested constructs, e.g., inner functions? Although user-level programmatic decorators may never get that ability, on further reflection, I don't see why built-in built-in decorator syntax should not be able to have those semantics. See [previous discussion](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/13).
-
-Note that the addition of this syntax would not meet the "backwards compatibility" goal of the Function.prototype.toString proposal--it would be a syntax error to use it in browsers that do not support it; see [this issue](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/9) for discussion.
-
-### Operator overloading declarations
-
-<table><tr><th><a href="https://github.com/littledan/proposal-operator-overloading/">Current proposal</a> form<th>As a built-in decorator
-<tr><td>
+<tr><td>Binding for the resource live in a block<td>
 
 ```js
-with operators from Scalar, Vector;
-function f() { return scalar + vector; }
+using (let file = File.open(path)) {
+  file.doStuff();
+}
 ```
 <td>
 
 ```js
-@use: operators(Scalar, Vector);
-function f() { return scalar + vector; }
+{
+  @use: resource
+  let file = File.open(path);
+  file.doStuff();
+}
+```
+<tr><td>Stand-alone statement<td>
+---
+<td>
+
+```js
+{
+  let file = File.open(path);
+  @use: resource(file);
+  file.doStuff();
+}
+```
+</table>
+
+In this case, the built-in decorator `@use: resource` can either decorate a block, a variable declaration, or an empty statement, but serves an intuitively similar purpose in all cases.
+
+### Module import variants
+
+The [asset references](https://github.com/sebmarkbage/ecmascript-asset-references) introduces a new import-like construct, with the `asset` contextual keyword. This keyword faces similar problems to other contextual keywords, with the need for cover grammars, ASI hazards, and a thing that looks like `import` but is subtlely different syntactically.
+
+Similarly, there have been various ideas about providing CORS or SRI-related metadata inline with module imports. Further thoughts about hashing have led to the refinement that signatures or hashes are better kept out-of-line (to avoid having to rehash/resign up the whole tree because a dependency changes), but there could be other kinds of metadata needed to pass into an import.
+
+<table><tr><th>Proposal<th>Syntax<th>As a built-in decorator
+<tr><td>Asset references<td>
+
+```js
+asset Foo from "./foo.mjs";
+async function load() {
+   // The type system now knows that this is wrong:
+  let foo: {bar: string} = await import(Foo);
+}
+```
+<td>
+
+```js
+@asset: reference
+import Foo from "./foo.mjs";
+async function load() {
+   // The type system now knows that this is wrong:
+  let foo: {bar: string} = await import(Foo);
+}
+```
+<tr><td>Import metadata<td>
+
+```js
+import Foo from "./foo.mjs" with option "value", option2 "value2";
+```
+<td>
+
+```js
+@use: options({ option: "value", option2: "value2" })
+import Foo from "./foo.mjs";
+
 ```
 </table>
 
@@ -239,12 +303,12 @@ Rather than introduce various kinds of contextual keywords, we could use built-i
   <tr><td><a href="https://github.com/hemanth/es-next#defensible-classes">Defensible classes</a><td>
 
 ```js
-const class Point { 
+const class Point {
   constructor(x, y) {
     public getX() { return x; }
     public getY() { return y; }
   }
-  toString() { 
+  toString() {
     return `<${this.getX()}, ${this.getY()}>`;
   }
 }
@@ -253,7 +317,7 @@ const class Point {
 
 ```js
 @def: defensible
-class Point { 
+class Point {
   #x; #y;
   constructor(x, y) {
     this.#x = x;
@@ -261,7 +325,7 @@ class Point {
   }
   getX() { return this.#x; }
   getY() { return this.#y; }
-  toString() { 
+  toString() {
     return `<${this.getX()}, ${this.getY()}>`;
   }
 }
@@ -288,7 +352,7 @@ class Point {
 <tr><td>Value types<td>
 
 ```js
-value class Point { 
+value class Point {
   #x; #y;
   constructor(x, y) {
     this.#x = x;
@@ -296,7 +360,7 @@ value class Point {
   }
   getX() { return this.#x; }
   getY() { return this.#y; }
-  toString() { 
+  toString() {
     return `<${this.getX()}, ${this.getY()}>`;
   }
 }
@@ -306,7 +370,7 @@ value class Point {
 
 ```js
 @def: value
-class Point { 
+class Point {
   #x; #y;
   constructor(x, y) {
     this.#x = x;
@@ -314,129 +378,67 @@ class Point {
   }
   getX() { return this.#x; }
   getY() { return this.#y; }
-  toString() { 
+  toString() {
     return `<${this.getX()}, ${this.getY()}>`;
   }
 }
 ```
 </table>
 
-#### Auto-bound methods
 
-Many of the use-cases for decorators have to do with various ways to "auto-bind" methods, that is, make it so that `this.method` refers to `this.method.bind(this)`. Class fields permit a pattern for using arrow functions in initializers, but this causes runtime overhead by pre-allocating the bound method per instance, when a bound method may not be needed. The decorator-based patterns can make that allocation lazy, but still, a bound method needs to be created each time a method is used, even if it's called immediately.
+### Function.prototype.toString censorship
 
-As a built-in feature, the runtime may be able to eliminate the creation of the bound method in the cases where it's called immediately, creating and caching it only when needed. It also may be more efficient to run during startup if it's built-in to the IC system rather than calling out to a custom getter (though in optimized code, the distinction may not exist).
-
-<table><tr><th>Usage style<th>As a built-in decorator
-<tr><td>On a specific method<td>
+<table><tr><th><a href="https://github.com/domenic/proposal-function-prototype-tostring-censorship">Current proposal</a> form<th>As a built-in decorator
+<tr><td>
 
 ```js
-class C {
-  @use: autobind
-  method() { }
+"use no Function.prototype.toString";
+function f() { }
+function g() { }
+```
+<td>
+
+```js
+@use: noFunctionPrototypeToString;
+function f() { }
+function g() { }
+```
+<tr><td>
+
+```js
+function h() {
+  "use no Function.prototype.toString";
 }
 ```
-<tr><td>On all methods in a class<td>
+<td>
 
 ```js
-@use: autobind
-class C {
-  method() { }
-}
+@use: noFunctionPrototypeToString
+function h() { }
 ```
 </table>
 
-### Explicit resource management
+There is a particular question about how "deep" should these built-in decorator syntaxes go--should such a construct be able to apply recursively, into nested constructs, e.g., inner functions? Although user-level programmatic decorators may never get that ability, on further reflection, I don't see why built-in built-in decorator syntax should not be able to have those semantics. See [previous discussion](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/13).
 
-The [explicit resource management](https://github.com/tc39/proposal-using-statement) proposal creates a protocol and convenient syntax for disposing of resources after they are used in a block of code. 
+Note that the addition of this syntax would not meet the "backwards compatibility" goal of the Function.prototype.toString proposal--it would be a syntax error to use it in browsers that do not support it; see [this issue](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/9) for discussion.
 
-<table><tr><th>Usage mode<th>Syntax<th>As a built-in decorator
-<tr><td>Using an allocated resource in a block<td>
+### Operator overloading declarations
+
+<table><tr><th><a href="https://github.com/littledan/proposal-operator-overloading/">Current proposal</a> form<th>As a built-in decorator
+<tr><td>
 
 ```js
-let file = File.open(path);
-using (file) {
-  file.doStuff();
-}
+with operators from Scalar, Vector;
+function f() { return scalar + vector; }
 ```
 <td>
 
 ```js
-let file = File.open(path);
-@use: resource(file) {
-  file.doStuff();
-}
-```
-<tr><td>Binding for the resource live in a block<td>
-
-```js
-using (let file = File.open(path)) {
-  file.doStuff();
-}
-```
-<td>
-
-```js
-{
-  @use: resource
-  let file = File.open(path);
-  file.doStuff();
-}
-```
-<tr><td>Stand-alone statement<td>
----
-<td>
-
-```js
-{
-  let file = File.open(path);
-  @use: resource(file);
-  file.doStuff();
-}
+@use: operators(Scalar, Vector);
+function f() { return scalar + vector; }
 ```
 </table>
 
-In this case, the built-in decorator `@use: resource` can either decorate a block, a variable declaration, or an empty statement, but serves an intuitively similar purpose in all cases.
-
-### Module import variants
-
-The [asset references](https://github.com/sebmarkbage/ecmascript-asset-references) introduces a new import-like construct, with the `asset` contextual keyword. This keyword faces similar problems to other contextual keywords, with the need for cover grammars, ASI hazards, and a thing that looks like `import` but is subtlely different syntactically. 
-
-Similarly, there have been various ideas about providing CORS or SRI-related metadata inline with module imports. Further thoughts about hashing have led to the refinement that signatures or hashes are better kept out-of-line (to avoid having to rehash/resign up the whole tree because a dependency changes), but there could be other kinds of metadata needed to pass into an import.
-
-<table><tr><th>Proposal<th>Syntax<th>As a built-in decorator
-<tr><td>Asset references<td>
-
-```js
-asset Foo from "./foo.mjs"; 
-async function load() {
-   // The type system now knows that this is wrong:
-  let foo: {bar: string} = await import(Foo);
-}
-```
-<td>
-
-```js
-@asset: reference
-import Foo from "./foo.mjs"; 
-async function load() {
-   // The type system now knows that this is wrong:
-  let foo: {bar: string} = await import(Foo);
-}
-```
-<tr><td>Import metadata<td>
-
-```js
-import Foo from "./foo.mjs" with option "value", option2 "value2";
-```
-<td>
-
-```js
-@use: options({ option: "value", option2: "value2" })
-import Foo from "./foo.mjs";
-
-```
-</table>
 
 ### Custom code transforms
 
@@ -444,7 +446,7 @@ Many people are experimenting with using various kinds of code generation in Jav
 
 There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
 
-To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax. 
+To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax.
 
 #### Managing scope names
 
