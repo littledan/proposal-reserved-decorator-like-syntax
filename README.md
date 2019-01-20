@@ -83,6 +83,10 @@ Thanks to Ron Buckton for suggesting this particular syntax in [this decorators 
 
 Thanks to Leo Balter for raising the idea of using a variant of decorator syntax for syntactic tail calls, which was really helpful for getting me thinking on this path.
 
+Thabks to Yehuda Katz for hia insight in bribging decorators to JavaScript and vision to use them as a basis for modifying all soets of syntactic constructs, and for discussions and reviews of this proposal.
+
+Thanks to Waldemar Horwat and Kevin Gibbons, Mark Miller, Leo Balter, Dave Herman and moe in TC39 for raising the urgency and peiprity of limiting the growth of syntactic complexity in JavaScript.
+
 ### Intuition for built-in decorators
 
 From the perspective of a programmer who uses decorators, and doesn't dive into implementing their own, decorators are a construct for modifying the behavior of the decorated code. Built-in decorators, including special built-in ones which have a `scope:` prefix, are doing just that. The `@` is a hint that this modification is going on, and what follows it describes what's being modified.
