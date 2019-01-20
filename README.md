@@ -75,14 +75,6 @@ Although most keywords and punctuation are taken, or planned to be taken, there 
 
 It might be notable that it's hard to find historical examples of this technique, but it's all over the place in proposals! Repurposing existing keywords for something which is semantically fairly different risks being confusing for programmers. The JavaScript learner could ask, "but what does the `try` keyword actually do?" when the answer is "it's repurposes for multiple things which are only loosely related". That might not be such a good experience, even if it leads to something which is syntactically unambiguous and easy to parse without weird edge cases.
 
-### Custom code transforms
-
-Many people are experimenting with using various kinds of code generation in JavaScript, e.g., with [Babel](https://babeljs.io/) plugins. Babel's parser only permits standards-track syntax (plus JSX and type systems) to be parsed, so transforms end up giving new semantics to existing syntax. Sometimes, the semantics provided can be considered in line with standard JavaScript, and sometimes, they may be somewhat distinct. Because there's no syntactic place to "opt in" to other semantics, new interpretations of existing constructs are the only option.
-
-There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
-
-To resolve this, the `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected. Scopes with project-specific names, such as `@ember:` or `@ts:`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases. These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax. 
-
 ## The idea of this proposal
 
 Let's see if we can reduce the syntax variation of new proposals by introducing a new pattern which can be flexibly used in many of these different potential future language features: to modify an existing construct with a new feature, prepend it with a built-in decorator `@scope: decorator`
@@ -106,14 +98,34 @@ Decorator-like constructs do different things in different languages; it's far f
 
 The goal here is not to encourage an explosion of new modifiers that everyone has to learn. But, when new modifiers do turn out to be needed in the evolution of the language, JavaScript developers should not have to learn a new set of syntactic rules to govern it, which are specific to that particular modifier.
 
+### Custom code transforms
+
+Many people are experimenting with using various kinds of code generation in JavaScript, e.g., with [Babel](https://babeljs.io/) plugins. Babel's parser only permits standards-track syntax (plus JSX and type systems) to be parsed, so transforms end up giving new semantics to existing syntax. Sometimes, the semantics provided can be considered in line with standard JavaScript, and sometimes, they may be somewhat distinct. Because there's no syntactic place to "opt in" to other semantics, new interpretations of existing constructs are the only option.
+
+There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
+
+To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax. 
+
+#### Managing scope names
+
+There is some risk that different non-standard scope names may overlap and conflict, much like different libraries that add properties of the same name to the global object may overlap and conflict. Unlike in libraries, there's no clear way to "import" these constructs to disambiguate (though one could imagine an analogous, tools-only "import type"-style construct for built-in decorators); built-in decorators aren't based on lexical scoping. This would be unfortunate, but at least it would be a limited-impact conflict (to those particular constructs).
+
+Some mitigation strategies to reduce the risks of overlaps:
+- By convention, scopes which are project-specific could use related names, such as `@ember:` or `@ts:`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases.
+- We could build a central place to share information about what kinds of scope names are used by projects; when choosing a new scope name, people can consult this list and choose one not included, and then note their choice on the list. Participation would be optional but beneficial to participants. Thiswork could take place in the [JS shared interfaces repository](https://github.com/littledan/js-shared-interfaces/).
+
 ## Examples of application
 
 This section contains some extremely early ideas (not necessarily reviewed by the proposal champions!) for how some TC39 proposals could make use of the built-in decorator syntax proposed in this document.
 
-As a default scope for static, built-in decorators, this article contains `@use:`, because:
+As a common scope for static, built-in decorators, this article contains many examples with `@use:` because:
 - Many JS developers are familiar with the `"use strict";` directive, and `@use:` builds on that intuition.
 - It's a short word which is easy to type.
 - It seems to sound reasonable when reading the code out loud.
+
+For constructs which are a mode for constructs which define functions, classes, methods, etc (including expressions for those constructs), `@def:` is used because:
+- Many developers are familiar with the `def` abbreviation for `define` from Python
+- This prefix evokes more the idea of choosing a specific different definition form, whereas `use` sounds more like a mode tweak.
 
 (Happy to bikeshed about future other names in an issue.)
 
@@ -171,6 +183,10 @@ function f() { return scalar + vector; }
 </table>
 
 ### Syntactic tail calls
+
+ES2015's implicit proper tail calls (PTC, also referred to as "tail call optimization") has only been shipping in JavaScriptCore (Safari) and not other JavaScript engines used in web browsers because of an unresolved disagreement about whether it's OK to have tail call semantics be opted into by default.
+
+The ["Syntactic Tail Calls"](https://github.com/tc39/proposal-ptc-syntax/) (STC) proposal adds explicit syntax for tail calls. However, this proposal uses the syntax `return continue`, which not everyone is happy about. Built-in decorators could be used for an alternative syntax design.
 
 <table><tr><th>Variant<th>Syntax<th>As a built-in decorator
 <tr><td>[Callsite-based](https://github.com/tc39/proposal-ptc-syntax/)<td>
@@ -247,7 +263,7 @@ const class Point {
 <td>
 
 ```js
-@define: defensible
+@def: defensible
 class Point { 
   #x; #y;
   constructor(x, y) {
@@ -272,7 +288,7 @@ const Point = new StructType([
 <td>
 
 ```js
-@define: typed
+@def: typed
 class Point {
   @typed: float64
   x;
@@ -300,7 +316,7 @@ value class Point {
 <td>
 
 ```js
-@define: value
+@def: value
 class Point { 
   #x; #y;
   constructor(x, y) {
@@ -343,7 +359,55 @@ class C {
 
 ### Explicit resource management
 
-The [explicit resource management](https://github.com/tc39/proposal-using-statement) proposal 
+The [explicit resource management](https://github.com/tc39/proposal-using-statement) proposal creates a protocol and convenient syntax for disposing of resources after they are used in a block of code. 
+
+<table><tr><th>Usage mode<th>Syntax<th>As a built-in decorator
+<tr><td>Using an allocated resource in a block<td>
+
+```js
+let file = File.open(path);
+using (file) {
+  file.doStuff();
+}
+```
+<td>
+
+```js
+let file = File.open(path);
+@use: resource(file) {
+  file.doStuff();
+}
+```
+<tr><td>Binding for the resource live in a block<td>
+
+```js
+using (let file = File.open(path)) {
+  file.doStuff();
+}
+```
+<td>
+
+```js
+{
+  @use: resource
+  let file = File.open(path);
+  file.doStuff();
+}
+```
+<tr><td>Stand-alone statement<td>
+---
+<td>
+
+```js
+{
+  let file = File.open(path);
+  @use: resource(file);
+  file.doStuff();
+}
+```
+</table>
+
+In this case, the built-in decorator `@use: resource` can either decorate a block, a variable declaration, or an empty statement, but serves an intuitively similar purpose in all cases.
 
 ### Module import variants
 
@@ -433,21 +497,26 @@ In theory, we could apply this to strings (`@foo "bar"`) or numeric literals (`@
 
 ### No support for decorating arbitrary expressions
 
-It probably wouldn't make sense to apply built-in decorators to arbitrary expressions (`@scope: foo (baz(bing))`). There's no clear way to make this syntactically unambiguous with `foo(baz(bing))` as a call, and the intention is that no particular knowledge of the scope is needed to parse what comes after it.
+It probably wouldn't make sense to apply built-in decorators to arbitrary expressions (`@scope: foo baz(bing)`). If parentheses are used around the expression, there's no clear way to make this syntactically unambiguous with `foo(baz(bing))` as a call, and the intention is that no particular knowledge of the scope is needed to parse what comes after it.
 
 ## Alternatives considered
 
 Aside from the current strategies cited earlier, there has been some discussion of other syntaxes for certain modified constructs:
 - Instead of the `@use: decorator` namespace, we could use the more abbreviated syntax `@@decorator`.
 - For value object literals, the syntax `#{ }` could be used, rather than something like `@use: value { }`.
+- Keywords following `@` are disallowed, so constructs like `@const` for defensible classes is a possible area for expansion, though more limited.
+- Decorators for certain constructs which don't currently permit decorators  could be interpreted as built-in by default, without a scope prefix (though this cuts off a potentially important evolutionary path where we later do have semantics for procedural decorators).
 
-There is no contradiction between continuing to define certain specialized syntaxes and setting aside a built-in syntax fallback. We can do both at the same time.
+There is no contradiction between continuing to define certain specialized syntaxes and setting aside a built-in syntax fallback. We can initially prototype features using scoped built-in decorator syntax, and later consider these more terse syntaxes for features where we decide it makes more sense.
 
 ## Next steps
 
 This proposal doesn't need to be at any particular stage, but if it's a direction that looks generally attractive, we might consider the following:
 - Ensure that the placement of decorators doesn't close off any particular future paths
-  - For example, class decorators should probably come after export
-- When adding another construct, consider whether 
+- When proposing another syntactic construct for JavaScript, consider whether it could use built-in decorator syntax.
 - Adding parser support for built-in decorators (and general metaproperty syntax) into tools like Babel, so that transform plugins can experiment with applying semantics to it.
 
+### Implications for the class decorators proposal
+
+- Class decorators should probably come after `export`, as we may want a built-in decorator to modify `export` declarations themselves, even if it seems implausible to have a procedural decorator modifying `export`.
+- There are many use cases for built-in decorators modifying deeply nested constructs, so we should make sure to build a clear intuition for this among decorators users. In the context of such an intuition, it makes sense for ordinary class decorators to be able to access private class elements.
