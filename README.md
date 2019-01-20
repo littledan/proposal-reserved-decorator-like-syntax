@@ -1,10 +1,12 @@
 # Built-in decorators
 
-This proposal suggests that, as we reach for syntax for a way to modify some other syntactic production, JavaScript could use a variant of the decorator syntax, of the form `@scope: expressionLike`. This syntactic space would be analogous to Allen Wirfs-Brock's proposal to use `keyword.pseudoproperty`, in the vein of `new.target` and `function.sent`.
+This proposal suggests that, as we reach for syntax for a way to modify some other syntactic production, JavaScript could use **built-in decorators**: a variant of the decorator syntax, of the form `@scope: expressionLike`.
+
+Status: Not at a stage; not yet introduced to TC39.
 
 ## The problem
 
-Why add new syntax? All else being equal, it'd be nice to stop adding more syntax to JavaScript. There's already a lot to learn in the language, and syntax has the particular property that it's in your face: it can't just do the right thing in the background, since you have to actually type it out to invoke it. It's not just based on composing existing constructs--it's a new construct.
+*Why add new syntax?* All else being equal, it'd be nice to stop adding more syntax to JavaScript. There's already a lot to learn in the language, and syntax has the particular property that it's in your face: it can't just do the right thing in the background, since you have to actually type it out to invoke it. It's not just based on composing existing constructs--it's a new construct.
 
 However, we just keep running into the need to make modified versions of other constructs. A unified syntax for such extensions is no excuse for adding unnecessary complexity, but it could make it more straightforward to design and prototype solutions that *are* justified, while minimizing the complexity of the JavaScript grammar long-term.
 
@@ -87,6 +89,8 @@ Thanks to Leo Balter for raising the idea of using a variant of decorator syntax
 Thanks to Yehuda Katz for hia insight in bringing decorators to JavaScript and vision to use them as a basis for modifying all soets of syntactic constructs, and for discussions and reviews of this proposal.
 
 Thanks to Waldemar Horwat, Kevin Gibbons, Mark Miller, Leo Balter, Dave Herman and more in TC39 for raising the urgency and priority of limiting the growth of syntactic complexity in JavaScript.
+
+Thanks to Allen Wirfs-Brock for introducing the idea of reserving a syntactic space, where he proposed `keyword.pseudoproperty`, in the vein of `new.target` and `function.sent`.
 
 ### Intuition for built-in decorators
 
