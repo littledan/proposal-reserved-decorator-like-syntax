@@ -71,7 +71,6 @@ Although most keywords and punctuation are taken, or planned to be taken, there 
 - [Pattern matching](https://github.com/tc39/proposal-pattern-matching)
 - [`do` expressions](https://github.com/tc39/proposal-do-expressions)
 - [Operator overloading `with operators from` declarations](https://github.com/littledan/proposal-operator-overloading/)
-- [`throw` expressions](https://github.com/tc39/proposal-throw-expressions)
 
 It might be notable that it's hard to find historical examples of this technique, but it's all over the place in proposals! Repurposing existing keywords for something which is semantically fairly different risks being confusing for programmers. The JavaScript learner could ask, "but what does the `try` keyword actually do?" when the answer is "it's repurposes for multiple things which are only loosely related". That might not be such a good experience, even if it leads to something which is syntactically unambiguous and easy to parse without weird edge cases.
 
