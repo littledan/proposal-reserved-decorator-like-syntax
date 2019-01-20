@@ -122,7 +122,7 @@ For constructs which are a mode for constructs which define functions, classes, 
 
 (Happy to bikeshed about future other names in an issue.)
 
-#### Auto-bound methods
+### Auto-bound methods
 
 Many of the use-cases for decorators have to do with various ways to "auto-bind" methods, that is, make it so that `this.method` refers to `this.method.bind(this)`. Class fields permit a pattern for using arrow functions in initializers, but this causes runtime overhead by pre-allocating the bound method per instance, when a bound method may not be needed. The decorator-based patterns can make that allocation lazy, but still, a bound method needs to be created each time a method is used, even if it's called immediately.
 
