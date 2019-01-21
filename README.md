@@ -1,8 +1,8 @@
 # Built-in decorators
 
-This proposal suggests that, as we reach for syntax for a way to modify some other syntactic production, JavaScript could use **built-in decorators**: a variant of the decorator syntax, of the form `@scope: expressionLike`.
+This proposal suggests that, as we reach for syntax for a way to modify some other syntactic production, JavaScript could use **built-in decorators**: a variant of the decorator syntax, of the form `@[expressionLike]`.
 
-Status: Not at a stage; not yet introduced to TC39.
+Status: Not at a stage; not yet introduced to TC39. On the agenda for the January 2019 meeting.
 
 ## The problem
 
@@ -76,11 +76,21 @@ Although most keywords and punctuation are taken, or planned to be taken, there 
 
 It might be notable that it's hard to find historical examples of this technique, but it's all over the place in proposals! Repurposing existing keywords for something which is semantically fairly different risks being confusing for programmers. The JavaScript learner could ask, "but what does the `try` keyword actually do?" when the answer is "it's repurposed for multiple things which are only loosely related". That might not be such a good experience, even if it leads to something which is syntactically unambiguous and easy to parse without weird edge cases.
 
+### Why not runtime decorators?
+
+Many of these constructs need to run ahead of time, visible during parsing and static semantics. For example:
+- Async functions and generator functions must be parse-able as such so that `await` or `yield` (respectively) are treated as keywords within their body.
+- Syntactic tail call sites must be statically known to avoid a performance regression in existing code (imagine an extra lookup and conditional per call!).
+- Resource usage blocks must take a block in a built-in way, otherwise there would be a requirement for anonymous functions which allow break, return and continue based on the *enclosing block*, which leads to serious implementation difficulties.
+- Module import variants must be known at parse time, since modules are imported before any code in the module runs.
+
+For this reason, class decorators or follow-on proposals based on function calls at runtime would not be suitable for many of the use cases that built-in decorators are proposed for.
+
 ## The idea of this proposal
 
-Let's see if we can reduce the syntax variation of new proposals by introducing a new pattern which can be flexibly used in many of these different potential future language features: to modify an existing construct with a new feature, prepend it with a built-in decorator `@scope: decorator`
+Let's see if we can reduce the syntax variation of new proposals by introducing a new pattern which can be flexibly used in many of these different potential future language features: to modify an existing construct with a new feature, prepend it with a built-in decorator `@[decorator]`
 
-### Credits for the idea
+### Credits for this proposal
 
 Thanks to Ron Buckton for suggesting this particular syntax in [this decorators issue comment](https://github.com/tc39/proposal-decorators/issues/69#issuecomment-385609889).
 
@@ -92,9 +102,11 @@ Thanks to Waldemar Horwat, Kevin Gibbons, Mark Miller, Leo Balter, Dave Herman a
 
 Thanks to Allen Wirfs-Brock for introducing the idea of reserving a syntactic space, where he proposed `keyword.pseudoproperty`, in the vein of `new.target` and `function.sent`.
 
+Thanks to various reviewers for expressing confusion at the previous `@scope: expressionLike` syntax, leading to the change to this proposal's `@[expressionLike]` syntax. Note that this syntax proposal is still very early and should be considered up for discussion and unstable.
+
 ### Intuition for built-in decorators
 
-From the perspective of a programmer who uses decorators, and doesn't dive into implementing their own, decorators are a construct for modifying the behavior of the decorated code. Built-in decorators, including special built-in ones which have a `scope:` prefix, are doing just that. The `@` is a hint that this modification is going on, and what follows it describes what's being modified.
+From the perspective of a programmer who uses decorators, and doesn't dive into implementing their own, decorators are a construct for modifying the behavior of the decorated code. Decorators, including special built-in ones which have `[]` around them, are doing just that. The `@` is a hint that this modification is going on, and what follows the decorator describes what's being modified.
 
 ### Related usage in other languages
 
@@ -111,17 +123,6 @@ The goal here is not to encourage an explosion of new modifiers that everyone ha
 
 This section contains some extremely early ideas (not necessarily reviewed by the proposal champions!) for how some TC39 proposals could make use of the built-in decorator syntax proposed in this document.
 
-As a common scope for static, built-in decorators, this article contains many examples with `@use:` because:
-- Many JS developers are familiar with the `"use strict";` directive, and `@use:` builds on that intuition.
-- It's a short word which is easy to type.
-- It seems to sound reasonable when reading the code out loud.
-
-For constructs which are a mode for constructs which define functions, classes, methods, etc (including expressions for those constructs), `@def:` is used because:
-- Many developers are familiar with the `def` abbreviation for `define` from Python
-- This prefix evokes more the idea of choosing a specific different definition form, whereas `use` sounds more like a mode tweak.
-
-(Happy to bikeshed about future other names in an issue.)
-
 ### Auto-bound methods
 
 Many of the use-cases for decorators have to do with various ways to "auto-bind" methods, that is, make it so that `this.method` refers to `this.method.bind(this)`. Class fields permit a pattern for using arrow functions in initializers, but this causes runtime overhead by pre-allocating the bound method per instance, when a bound method may not be needed. The decorator-based patterns can make that allocation lazy, but still, a bound method needs to be created each time a method is used, even if it's called immediately.
@@ -133,14 +134,14 @@ As a built-in feature, the runtime may be able to eliminate the creation of the 
 
 ```js
 class C {
-  @use: autobind
+  @[autobind]
   method() { }
 }
 ```
 <tr><td>On all methods in a class<td>
 
 ```js
-@use: autobind
+@[autobind]
 class C {
   method() { }
 }
@@ -164,7 +165,7 @@ using (file) {
 
 ```js
 let file = File.open(path);
-@use: resource(file) {
+@[resource(file)] {
   file.doStuff();
 }
 ```
@@ -179,7 +180,7 @@ using (let file = File.open(path)) {
 
 ```js
 {
-  @use: resource
+  @[resource]
   let file = File.open(path);
   file.doStuff();
 }
@@ -191,7 +192,7 @@ using (let file = File.open(path)) {
 ```js
 {
   let file = File.open(path);
-  @use: resource(file);
+  @[resource(file)];
   file.doStuff();
 }
 ```
@@ -218,7 +219,7 @@ async function load() {
 <td>
 
 ```js
-@asset: reference
+@[asset]
 import Foo from "./foo.mjs";
 async function load() {
    // The type system now knows that this is wrong:
@@ -233,7 +234,7 @@ import Foo from "./foo.mjs" with option "value", option2 "value2";
 <td>
 
 ```js
-@use: options({ option: "value", option2: "value2" })
+@[options({ option: "value", option2: "value2" })]
 import Foo from "./foo.mjs";
 
 ```
@@ -265,8 +266,7 @@ function factorial(n, acc = 1) {
     return acc;
   }
 
-  @use: tailcall
-  return factorial(n - 1, acc * n)
+  return @[tailcall] factorial(n - 1, acc * n)
 }
 ```
 <tr><td><a href="https://github.com/tc39/proposal-ptc-syntax/issues/5">Function-based</a><td>
@@ -284,7 +284,7 @@ function factorial(n, acc = 1) {
 <td>
 
 ```js
-@use: tailcall
+@[tailcall]
 function factorial(n, acc = 1) {
   if (n === 1) {
     return acc;
@@ -295,7 +295,7 @@ function factorial(n, acc = 1) {
 ```
 </table>
 
-In both cases, the `@use: tailcall` built-in decorator would be an assertion that the marked code contains a tail call, and the semantics the affected callsites would be treated as such. The placement is determined by the programmer, depending on their programming style and intuition. Decorating the return statement is a more specific assertion and marks the specific callsite, whereas decorating the whole function can be convenient when there may be many tail call sites, and it would be repetitive to mark each one.
+In both cases, the `@[tailcall]` built-in decorator would be an assertion that the marked code contains a tail call, and the semantics the affected callsites would be treated as such. The placement is determined by the programmer, depending on their programming style and intuition. Decorating a callsite is a more specific assertion, whereas decorating the whole function can be convenient when there may be many tail call sites, and it would be repetitive to mark each one.
 
 ### Variants on classes
 
@@ -320,7 +320,7 @@ const class Point {
 <td>
 
 ```js
-@def: defensible
+@[defensible]
 class Point {
   #x; #y;
   constructor(x, y) {
@@ -345,11 +345,11 @@ const Point = new StructType([
 <td>
 
 ```js
-@def: typed
+@[typed]
 class Point {
-  @typed: float64
+  @[type(float64)]
   x;
-  @typed: float64
+  @[type(float64)]
   y;
 }
 ```
@@ -373,7 +373,7 @@ value class Point {
 <td>
 
 ```js
-@def: value
+@[value]
 class Point {
   #x; #y;
   constructor(x, y) {
@@ -403,7 +403,7 @@ function g() { }
 <td>
 
 ```js
-@use: noFunctionPrototypeToString;
+@[noFunctionPrototypeToString];
 function f() { }
 function g() { }
 ```
@@ -417,12 +417,12 @@ function h() {
 <td>
 
 ```js
-@use: noFunctionPrototypeToString
+@[noFunctionPrototypeToString]
 function h() { }
 ```
 </table>
 
-There is a particular question about how "deep" should these built-in decorator syntaxes go--should such a construct be able to apply recursively, into nested constructs, e.g., inner functions? Although user-level programmatic decorators may never get that ability, on further reflection, I don't see why built-in built-in decorator syntax should not be able to have those semantics. See [previous discussion](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/13).
+There is a particular question about how "deep" should these built-in decorator syntaxes go--should such a construct be able to apply recursively, into nested constructs, e.g., inner functions? Although user-level programmatic decorators may never get that ability, it's unclear why built-in built-in decorator syntax should not be able to have those semantics. See [previous discussion](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/13).
 
 Note that the addition of this syntax would not meet the "backwards compatibility" goal of the Function.prototype.toString proposal--it would be a syntax error to use it in browsers that do not support it; see [this issue](https://github.com/domenic/proposal-function-prototype-tostring-censorship/issues/9) for discussion.
 
@@ -438,7 +438,7 @@ function f() { return scalar + vector; }
 <td>
 
 ```js
-@use: operators(Scalar, Vector);
+@[operators(Scalar, Vector)];
 function f() { return scalar + vector; }
 ```
 </table>
@@ -450,14 +450,14 @@ Many people are experimenting with using various kinds of code generation in Jav
 
 There's a composability issue here: If these transforms are done globally, rather than specifically to just constructs that need them, the code base and the transform sort of go together, and it might not be possible to develop two different types of code together, if the transforms need to be used on the file as a whole.
 
-To resolve this, the built-in decorator `@scope: expression` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax.
+To resolve this, the built-in decorator `@[expression]` construct could be used to specifically call for a transform on a particular piece of code which is affected.  These would all be syntax errors executed in JavaScript without transformation by tools (since only known scopes with specification-defined behavior are accepted), without including their own custom syntax.
 
 #### Managing scope names
 
 There is some risk that different non-standard scope names may overlap and conflict, much like different libraries that add properties of the same name to the global object may overlap and conflict. Unlike in libraries, there's no clear way to "import" these constructs to disambiguate (though one could imagine an analogous, tools-only "import type"-style construct for built-in decorators); built-in decorators aren't based on lexical scoping. This would be unfortunate, but at least it would be a limited-impact conflict (to those particular constructs).
 
 Some mitigation strategies to reduce the risks of overlaps:
-- By convention, scopes which are project-specific could use related names, such as `@ember:` or `@ts:`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases.
+- By convention, scopes which are project-specific could use related names, such as `@[ember.identifier]` or `@[ts.identifier]`, could be used to call out to tool- or project-specific transforms, allowing these plugins to be used together in the same code bases.
 - We could build a central place to share information about what kinds of scope names are used by projects; when choosing a new scope name, people can consult this list and choose one not included, and then note their choice on the list. Participation would be optional but beneficial to participants. This work could take place in the [JS shared interfaces repository](https://github.com/littledan/js-shared-interfaces/).
 
 ## Syntactic details
@@ -474,8 +474,8 @@ The grammar of a built-in decorator is based on ordinary decorators:
     @ DecoratorCallExpression[?Yield, ?Await]
 
   BuiltinDecorator[Yield, Await]:
-    @ IdentifierName : DecoratorMemberExpression[?Yield, ?Await]
-    @ IdentifierName : DecoratorCallExpression[?Yield, ?Await]
+    @ [ DecoratorMemberExpression[?Yield, ?Await] ]
+    @ [ DecoratorCallExpression[?Yield, ?Await] ]
 
   DecoratorMemberExpression[Yield, Await]:
     IdentifierReference[?Yield, ?Await]
@@ -486,37 +486,33 @@ The grammar of a built-in decorator is based on ordinary decorators:
     DecoratorMemberExpression Arguments[?Yield, ?Await]
 ```
 
-`DecoratorList`s can be potentially used in various contexts, preceding the syntactic productions `Statement` (omitting `ExpressionStatement`, see below), `ArrayLiteral`, `ObjectLiteral`, `FunctionExpression`, `ClassExpression`, `GeneratorExpression`, `AsyncFunctionExpression`, `AsyncGeneratorExpression`, `ArrowFunction`, and `AsyncArrowFunction`.
+`DecoratorList`s can be potentially used in various contexts, including preceding the syntactic productions `Statement` and `MemberExpression`, including:
+- Empty statement (just a semicolon)
+- Class declarations
+- Function declarations (including async and generator)
+- `if` statements, loops, `return` statements, etc
+- Variable declarations
+- Object literals
+- Array literals
+- Function calls
+- Arrow functions
 
-Initially, "Static Semantics: Early Errors" rules are used to maintain a syntax error in all cases of using built-in decorators, and all cases where decorators exist that aren't supported by the [class decorators](https://github.com/tc39/proposal-decorators/) proposal. Future proposals may chip away at this space, defining various subsets, while leaving the rest in tact for further proposals. The encouraged path is to never give an interpretation to the entire `@IdentifierName:` space, and instead chose individual `IdentifierName`s to define, to leave space open for later
+Initially, "Static Semantics: Early Errors" rules are used to maintain a syntax error in all cases of using built-in decorators, and all cases where decorators exist that aren't supported by the [class decorators](https://github.com/tc39/proposal-decorators/) proposal. Future proposals may chip away at this space, defining various subsets, while leaving the rest in tact for further proposals. The encouraged path is to never give an interpretation to the entire `@[decorator]` space, and instead chose individual `decorator`s to define, to leave space open for later.
 
-#### ASI hazard for `EmptyStatement`
+### ASI hazard for `EmptyStatement`
 
-One use case for built-in decorators is a statement-like pragma, which covers the rest of the program, as in `@use: operators(Vector);` above. In this case, the semicolon is mandatory, otherwise the immediately following construct will be decorated. I believe that it should be OK to require a semicolon in a fixed construct like this.
+One use case for built-in decorators is a statement-like pragma, which covers the rest of the program, as in `@[operators(Vector)];` above. In this case, the semicolon is mandatory, otherwise the immediately following construct will be decorated. I believe that it should be OK to require a semicolon in a fixed construct like this.
 
-An alternative is to say that the `IdentifierName` determines whehter it's an `EmptyStatement` decorator or one which takes a larger syntactic construct afterwards. This option is dispreferred, as it weakens the usability of built-in decorators as an extension point for tools (those tools would have to pass in this parameter to the parser).
-
-#### Cover grammar for decorated arrow functions
-
-Arrow function parameters will require a certain cover grammar, to differentiate from a function call. I think it will be similar in shape to the grammar of async arrow functions, and it will hopefully be able to reuse some grammar components, but more work is needed to on the details.
-
-#### Omitting other literals
-
-In theory, we could apply this to strings (`@foo "bar"`) or numeric literals (`@foo 3`). However, these are already handled by other language features or proposals:
-- Rather than decorated string literals, we have [tagged template literals](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals), which provide more power.
-- Rather than decorated numeric literals, we have [the extended numeric literals proposal](https://github.com/tc39/proposal-extended-numeric-literals), which has more terse syntax (needed for tiny numbers).
-
-### No support for decorating arbitrary expressions
-
-It probably wouldn't make sense to apply built-in decorators to arbitrary expressions (`@scope: foo baz(bing)`). If parentheses are used around the expression, there's no clear way to make this syntactically unambiguous with `foo(baz(bing))` as a call, and the intention is that no particular knowledge of the scope is needed to parse what comes after it.
+An alternative is to say that the `IdentifierName` determines whether it's an `EmptyStatement` decorator or one which takes a larger syntactic construct afterwards. This option is dispreferred, as it weakens the usability of built-in decorators as an extension point for tools (those tools would have to pass in this parameter to the parser).
 
 ## Alternatives considered
 
 Aside from the current strategies cited earlier, there has been some discussion of other syntaxes for certain modified constructs:
-- Instead of the `@use: decorator` namespace, we could use the more abbreviated syntax `@@decorator`.
-- For value object literals, the syntax `#{ }` could be used, rather than something like `@use: value { }`.
+- Instead of the `@[decorator]` syntax, we could use the more abbreviated syntax `@@decorator`. The square brackets are used to emphasize the mode switch: the thing inside of the brackets are not treated as an expression, but rather have a special treatment at parse time. It's also beneficial to have an end token, to enable decorating more types of expressions, as well as simplifying the parsing of arrow functions with built-in decorators.
+- For value object literals, the syntax `#{ }` could be used, rather than something like `@[record] { }`, and similarly, `#[ ]` vs `@[tuple] [ ]`.
 - Keywords following `@` are disallowed, so constructs like `@const` for defensible classes is a possible area for expansion, though more limited.
 - Decorators for certain constructs which don't currently permit decorators  could be interpreted as built-in by default, without a scope prefix (though this cuts off a potentially important evolutionary path where we later do have semantics for procedural decorators).
+- A previous version of this proposal used `@prefix: expressionLike` syntax, but that seemed to be confusing.
 
 There is no contradiction between continuing to define certain specialized syntaxes and setting aside a built-in syntax fallback. We can initially prototype features using scoped built-in decorator syntax, and later consider these more terse syntaxes for features where we decide it makes more sense.
 
